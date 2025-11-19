@@ -1,0 +1,8 @@
+br\com\una\sysbib\dao\UsuarioDAO.class
+br\com\una\sysbib\dao\LivroDAO.class
+br\com\una\sysbib\model\Livro.class
+br\com\una\sysbib\dao\EmprestimoDAO.class
+br\com\una\sysbib\model\Usuario.class
+br\com\una\sysbib\dao\Conexao.class
+br\com\una\sysbib\MainConsole.class
+br\com\una\sysbib\model\Emprestimo.class
