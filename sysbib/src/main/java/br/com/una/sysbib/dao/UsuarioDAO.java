@@ -1,114 +1,110 @@
-package br.com.una.sysbib.dao; // Pacote onde a classe está localizada
+package br.com.una.sysbib.dao;
 
-import br.com.una.sysbib.model.Usuario; // Importa o modelo Usuario
-import java.sql.Connection; // Representa a conexão com o banco
-import java.sql.PreparedStatement; // Usado para comandos SQL com parâmetros
-import java.sql.ResultSet; // Resultado de consultas SELECT
-import java.sql.Statement; // Executa SQL simples
-import java.util.ArrayList; // Lista dinâmica
-import java.util.List; // Interface de lista
+import br.com.una.sysbib.model.Usuario;
 
-// Classe responsável pelas operações de CRUD do usuário no banco de dados
+import java.sql.*;
+import java.util.ArrayList;
+import java.util.List;
+
 public class UsuarioDAO {
 
-    // =============================================================
-    // MÉTODO: inserir
-    // Insere um novo usuário na tabela 'usuario'
-    // =============================================================
-    public boolean inserir(Usuario usuario) {
+    public boolean inserir(Usuario u) {
+        String sql = "INSERT INTO usuario (nome, email) VALUES (?, ?)";
 
-        String sql = "INSERT INTO usuario (nome, email) VALUES (?, ?)"; // SQL com parâmetros
+        try (Connection conn = Conexao.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
 
-        Connection conn = Conexao.getConnection(); // Obtém a conexão ativa com o banco
+            stmt.setString(1, u.getNome());
+            stmt.setString(2, u.getEmail());
 
-        // PreparedStatement fecha automaticamente com try-with-resources
-        try (PreparedStatement stmt = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
-
-            stmt.setString(1, usuario.getNome()); // Define o primeiro parâmetro (nome)
-            stmt.setString(2, usuario.getEmail()); // Define o segundo parâmetro (email)
-
-            int affectedRows = stmt.executeUpdate(); // Executa o INSERT
-
-            // Se inseriu pelo menos 1 linha, tenta pegar o ID gerado automaticamente
-            if (affectedRows > 0) {
-                try (ResultSet rs = stmt.getGeneratedKeys()) { // Retorna os IDs gerados
-                    if (rs.next()) { // Se houver um ID
-                        usuario.setId(rs.getInt(1)); // Atribui ao objeto
-                        return true; // Inserção concluída com sucesso
-                    }
-                }
+            int affected = stmt.executeUpdate();
+            if (affected > 0) {
+                ResultSet rs = stmt.getGeneratedKeys();
+                if (rs.next()) u.setId(rs.getInt(1));
+                return true;
             }
+
         } catch (Exception e) {
             System.err.println("Erro ao inserir usuário: " + e.getMessage());
         }
-
-        return false; // Caso aconteça erro
+        return false;
     }
 
+    public List<Usuario> listarTodos() {
+        List<Usuario> lista = new ArrayList<>();
+        String sql = "SELECT * FROM usuario ORDER BY nome";
 
-    // =============================================================
-    // MÉTODO: buscarTodos
-    // Retorna uma lista com TODOS os usuários cadastrados no banco
-    // =============================================================
-    public List<Usuario> buscarTodos() {
+        try (Connection conn = Conexao.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql);
+             ResultSet rs = stmt.executeQuery()) {
 
-        List<Usuario> usuarios = new ArrayList<>(); // Lista que armazenará os usuários encontrados
-
-        String sql = "SELECT id, nome, email FROM usuario"; // Busca tudo da tabela usuário
-
-        Connection conn = Conexao.getConnection(); // Obtém a conexão
-
-        // Statement e ResultSet fecham automaticamente
-        try (Statement stmt = conn.createStatement();
-             ResultSet rs = stmt.executeQuery(sql)) {
-
-            // Percorre cada linha da tabela
             while (rs.next()) {
-                Usuario u = new Usuario(
-                        rs.getInt("id"),     // ID
-                        rs.getString("nome"), // Nome
-                        rs.getString("email") // Email
-                );
-                usuarios.add(u); // Adiciona na lista
+                Usuario u = new Usuario();
+                u.setId(rs.getInt("id"));
+                u.setNome(rs.getString("nome"));
+                u.setEmail(rs.getString("email"));
+                lista.add(u);
             }
 
         } catch (Exception e) {
-            System.err.println("Erro ao buscar usuários: " + e.getMessage());
+            System.err.println("Erro ao listar usuários: " + e.getMessage());
         }
-
-        return usuarios; // Retorna a lista (vazia ou cheia)
+        return lista;
     }
 
-
-    // =============================================================
-    // MÉTODO: buscarPorId
-    // Retorna um usuário específico buscando pelo ID
-    // =============================================================
     public Usuario buscarPorId(int id) {
+        String sql = "SELECT * FROM usuario WHERE id = ?";
 
-        String sql = "SELECT id, nome, email FROM usuario WHERE id = ?"; // Consulta com filtro
+        try (Connection conn = Conexao.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
 
-        Connection conn = Conexao.getConnection(); // Obtém conexão
+            stmt.setInt(1, id);
 
-        // PreparedStatement com parâmetro
-        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
-
-            stmt.setInt(1, id); // Define o valor do ? (ID procurado)
-
-            try (ResultSet rs = stmt.executeQuery()) { // Executa SELECT
-                if (rs.next()) { // Se encontrou o ID
-                    return new Usuario(
+            ResultSet rs = stmt.executeQuery();
+            if (rs.next()) {
+                return new Usuario(
                         rs.getInt("id"),
                         rs.getString("nome"),
                         rs.getString("email")
-                    );
-                }
+                );
             }
 
         } catch (Exception e) {
-            System.err.println("Erro ao buscar usuário por ID: " + e.getMessage());
+            System.err.println("Erro ao buscar usuário: " + e.getMessage());
         }
+        return null;
+    }
 
-        return null; // Se não encontrou, retorna null
+    public boolean atualizar(Usuario u) {
+        String sql = "UPDATE usuario SET nome = ?, email = ? WHERE id = ?";
+
+        try (Connection conn = Conexao.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setString(1, u.getNome());
+            stmt.setString(2, u.getEmail());
+            stmt.setInt(3, u.getId());
+
+            return stmt.executeUpdate() > 0;
+
+        } catch (Exception e) {
+            System.err.println("Erro ao atualizar usuário: " + e.getMessage());
+        }
+        return false;
+    }
+
+    public boolean deletar(int id) {
+        String sql = "DELETE FROM usuario WHERE id = ?";
+
+        try (Connection conn = Conexao.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setInt(1, id);
+            return stmt.executeUpdate() > 0;
+
+        } catch (Exception e) {
+            System.err.println("Erro ao deletar usuário: " + e.getMessage());
+        }
+        return false;
     }
 }

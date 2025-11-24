@@ -1,89 +1,148 @@
-package br.com.una.sysbib.model; // Define o pacote onde essa classe pertence
+package br.com.una.sysbib.model;
 
-// Declara a classe pública chamada Emprestimo — representa um empréstimo de livro
+import java.time.LocalDate;
+
 public class Emprestimo {
 
-    // ---------- 1. ATRIBUTOS (CAMPOS) ----------
-    // Cada empréstimo terá essas informações armazenadas
-    private int id; // ID único do empréstimo (geralmente gerado pelo banco)
-    private int idLivro; // ID do livro que foi emprestado (liga ao livro)
-    private int idUsuario; // ID do usuário que pegou o livro emprestado
-    private String dataEmprestimo; // Data em que o empréstimo foi realizado (ex: "01/01/2025")
-    private String dataDevolucaoPrevista; // Data prevista para devolução do livro
+    private int id;
+    private int idLivro;
+    private int idUsuario;
 
-    // ---------- 2. CONSTRUTOR DE PERSISTÊNCIA ----------
-    // Esse construtor é usado quando buscamos um registro no banco
-    // e já temos o ID (ou seja, é um empréstimo que já existe no sistema).
-    public Emprestimo(int id, int idLivro, int idUsuario, String dataEmprestimo, String dataDevolucaoPrevista) {
-        // Abaixo atribuímos os valores recebidos (parâmetros) aos campos da classe
-        this.id = id; // Define o campo id com o valor do parâmetro id
-        this.idLivro = idLivro; // Define o campo idLivro
-        this.idUsuario = idUsuario; // Define o campo idUsuario
-        this.dataEmprestimo = dataEmprestimo; // Define a data do empréstimo
-        this.dataDevolucaoPrevista = dataDevolucaoPrevista; // Define a data prevista de devolução
+    private String tituloLivro;
+    private String nomeUsuario;
+
+    private LocalDate dataEmprestimo;
+    private LocalDate dataDevolucaoPrevista;
+    private LocalDate dataDevolucaoReal; // pode ser null enquanto não devolvido
+
+    private double multaAtrasoDia;  // normalmente 2.50
+    private double multaDano;       // normalmente 100.00
+    private double valorMultaTotal; // calculado na devolução
+
+    public Emprestimo() {
     }
 
-    // ---------- 3. CONSTRUTOR DE REGISTRO ----------
-    // Esse construtor é usado quando vamos criar um novo empréstimo no sistema
-    // ainda sem ID (o ID será gerado pelo banco depois de inserir o registro).
-    public Emprestimo(int idLivro, int idUsuario, String dataEmprestimo, String dataDevolucaoPrevista) {
-        // Não recebemos o id aqui porque ainda não existe no banco
-        this.idLivro = idLivro; // Atribui o ID do livro ao campo
-        this.idUsuario = idUsuario; // Atribui o ID do usuário ao campo
-        this.dataEmprestimo = dataEmprestimo; // Atribui a data do empréstimo
-        this.dataDevolucaoPrevista = dataDevolucaoPrevista; // Atribui a data prevista de devolução
+    public Emprestimo(int id, int idLivro, int idUsuario, String tituloLivro, String nomeUsuario,
+                      LocalDate dataEmprestimo, LocalDate dataDevolucaoPrevista,
+                      LocalDate dataDevolucaoReal, double multaAtrasoDia, double multaDano,
+                      double valorMultaTotal) {
+        this.id = id;
+        this.idLivro = idLivro;
+        this.idUsuario = idUsuario;
+        this.tituloLivro = tituloLivro;
+        this.nomeUsuario = nomeUsuario;
+        this.dataEmprestimo = dataEmprestimo;
+        this.dataDevolucaoPrevista = dataDevolucaoPrevista;
+        this.dataDevolucaoReal = dataDevolucaoReal;
+        this.multaAtrasoDia = multaAtrasoDia;
+        this.multaDano = multaDano;
+        this.valorMultaTotal = valorMultaTotal;
     }
 
-    // ---------- 4. GETTERS E SETTERS ----------
-    // Getters recuperam valores; setters alteram valores. Simples assim.
+    // Getters e Setters
 
-    // Retorna o ID do empréstimo
     public int getId() {
-        return id; // Devolve o valor do campo id
+        return id;
     }
 
-    // Define o ID do empréstimo (usado por exemplo depois de inserir no banco)
     public void setId(int id) {
-        this.id = id; // Atribui o valor passado ao campo id
+        this.id = id;
     }
 
-    // Retorna o ID do livro que foi emprestado
     public int getIdLivro() {
-        return idLivro; // Devolve o valor do campo idLivro
+        return idLivro;
     }
 
-    // Define o ID do livro (se necessário alterar)
     public void setIdLivro(int idLivro) {
-        this.idLivro = idLivro; // Atribui o valor passado ao campo idLivro
+        this.idLivro = idLivro;
     }
 
-    // Retorna o ID do usuário que fez o empréstimo
     public int getIdUsuario() {
-        return idUsuario; // Devolve o valor do campo idUsuario
+        return idUsuario;
     }
 
-    // Define o ID do usuário (se precisar mudar)
     public void setIdUsuario(int idUsuario) {
-        this.idUsuario = idUsuario; // Atribui o valor passado ao campo idUsuario
+        this.idUsuario = idUsuario;
     }
 
-    // Retorna a data em que o empréstimo foi realizado
-    public String getDataEmprestimo() {
-        return dataEmprestimo; // Devolve o valor do campo dataEmprestimo
+    public String getTituloLivro() {
+        return tituloLivro;
     }
 
-    // Define a data do empréstimo
-    public void setDataEmprestimo(String dataEmprestimo) {
-        this.dataEmprestimo = dataEmprestimo; // Atribui o valor passado ao campo dataEmprestimo
+    public void setTituloLivro(String tituloLivro) {
+        this.tituloLivro = tituloLivro;
     }
 
-    // Retorna a data prevista para devolução do livro
-    public String getDataDevolucaoPrevista() {
-        return dataDevolucaoPrevista; // Devolve o valor do campo dataDevolucaoPrevista
+    public String getNomeUsuario() {
+        return nomeUsuario;
     }
 
-    // Define a data prevista para devolução
-    public void setDataDevolucaoPrevista(String dataDevolucaoPrevista) {
-        this.dataDevolucaoPrevista = dataDevolucaoPrevista; // Atribui o valor passado ao campo dataDevolucaoPrevista
+    public void setNomeUsuario(String nomeUsuario) {
+        this.nomeUsuario = nomeUsuario;
+    }
+
+    public LocalDate getDataEmprestimo() {
+        return dataEmprestimo;
+    }
+
+    public void setDataEmprestimo(LocalDate dataEmprestimo) {
+        this.dataEmprestimo = dataEmprestimo;
+    }
+
+    public LocalDate getDataDevolucaoPrevista() {
+        return dataDevolucaoPrevista;
+    }
+
+    public void setDataDevolucaoPrevista(LocalDate dataDevolucaoPrevista) {
+        this.dataDevolucaoPrevista = dataDevolucaoPrevista;
+    }
+
+    public LocalDate getDataDevolucaoReal() {
+        return dataDevolucaoReal;
+    }
+
+    public void setDataDevolucaoReal(LocalDate dataDevolucaoReal) {
+        this.dataDevolucaoReal = dataDevolucaoReal;
+    }
+
+    public double getMultaAtrasoDia() {
+        return multaAtrasoDia;
+    }
+
+    public void setMultaAtrasoDia(double multaAtrasoDia) {
+        this.multaAtrasoDia = multaAtrasoDia;
+    }
+
+    public double getMultaDano() {
+        return multaDano;
+    }
+
+    public void setMultaDano(double multaDano) {
+        this.multaDano = multaDano;
+    }
+
+    public double getValorMultaTotal() {
+        return valorMultaTotal;
+    }
+
+    public void setValorMultaTotal(double valorMultaTotal) {
+        this.valorMultaTotal = valorMultaTotal;
+    }
+
+    @Override
+    public String toString() {
+        return "Emprestimo{" +
+                "id=" + id +
+                ", idLivro=" + idLivro +
+                ", idUsuario=" + idUsuario +
+                ", tituloLivro='" + tituloLivro + '\'' +
+                ", nomeUsuario='" + nomeUsuario + '\'' +
+                ", dataEmprestimo=" + dataEmprestimo +
+                ", dataDevolucaoPrevista=" + dataDevolucaoPrevista +
+                ", dataDevolucaoReal=" + dataDevolucaoReal +
+                ", multaAtrasoDia=" + multaAtrasoDia +
+                ", multaDano=" + multaDano +
+                ", valorMultaTotal=" + valorMultaTotal +
+                '}';
     }
 }

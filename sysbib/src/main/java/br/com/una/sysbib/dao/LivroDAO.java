@@ -1,150 +1,180 @@
-package br.com.una.sysbib.dao; // Pacote onde a classe está localizada
+package br.com.una.sysbib.dao;
 
-import br.com.una.sysbib.model.Livro; // Importa o modelo Livro
-import java.sql.Connection; // Representa a conexão com o banco
-import java.sql.PreparedStatement; // Comandos SQL com parâmetros
-import java.sql.ResultSet; // Resultado de SELECT
-import java.sql.Statement; // Execução de SQL simples
-import java.util.ArrayList; // Lista dinâmica
-import java.util.List; // Interface de lista
+import br.com.una.sysbib.model.Livro;
 
-// Classe responsável por salvar, buscar e atualizar livros no banco
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.Statement;
+import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.List;
+
 public class LivroDAO {
 
-    // =============================================================
-    // MÉTODO: inserir
-    // Insere um novo livro no banco
-    // =============================================================
     public boolean inserir(Livro livro) {
+        String sql = "INSERT INTO livro (isbn, titulo, autor, cdd, cdu, disponivel) VALUES (?, ?, ?, ?, ?, ?)";
+        try (Connection conn = Conexao.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
 
-        // SQL para inserir livro
-        String sql = "INSERT INTO livro (titulo, autor, disponivel) VALUES (?, ?, ?)";
+            stmt.setString(1, livro.getIsbn());
+            stmt.setString(2, livro.getTitulo());
+            stmt.setString(3, livro.getAutor());
+            stmt.setString(4, livro.getCdd());
+            stmt.setString(5, livro.getCdu());
+            stmt.setInt(6, livro.isDisponivel() ? 1 : 0);
 
-        // Obtém a conexão ativa
-        Connection conn = Conexao.getConnection();
-
-        // PreparedStatement fecha automaticamente com try-with-resources
-        try (PreparedStatement stmt = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
-
-            // Preenche parâmetros do INSERT
-            stmt.setString(1, livro.getTitulo()); // título
-            stmt.setString(2, livro.getAutor()); // autor
-            stmt.setInt(3, livro.isDisponivel() ? 1 : 0); // status (1 = disponível)
-
-            // Executa o comando e verifica linhas afetadas
-            int affectedRows = stmt.executeUpdate();
-
-            // Se inseriu, pega o ID gerado
-            if (affectedRows > 0) {
+            int affected = stmt.executeUpdate();
+            if (affected > 0) {
                 try (ResultSet rs = stmt.getGeneratedKeys()) {
                     if (rs.next()) {
-                        livro.setId(rs.getInt(1)); // define ID no objeto
-                        return true;
+                        livro.setId(rs.getInt(1));
                     }
                 }
+                return true;
             }
-
-        } catch (Exception e) {
+        } catch (SQLException e) {
             System.err.println("Erro ao inserir livro: " + e.getMessage());
         }
-
-        return false; // Erro ao inserir
+        return false;
     }
 
+    public List<Livro> listarTodos() {
+        List<Livro> livros = new ArrayList<>();
+        String sql = "SELECT id, isbn, titulo, autor, cdd, cdu, disponivel FROM livro ORDER BY titulo";
 
-    // =============================================================
-    // MÉTODO: buscarTodos
-    // Retorna uma lista com todos os livros da tabela
-    // =============================================================
-    public List<Livro> buscarTodos() {
-        List<Livro> livros = new ArrayList<>(); // Lista onde os livros serão armazenados
+        try (Connection conn = Conexao.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql);
+             ResultSet rs = stmt.executeQuery()) {
 
-        // SQL para buscar todos os livros
-        String sql = "SELECT id, titulo, autor, disponivel FROM livro";
-
-        Connection conn = Conexao.getConnection(); // obtém conexão
-
-        // Statement e ResultSet fecham automaticamente
-        try (Statement stmt = conn.createStatement();
-             ResultSet rs = stmt.executeQuery(sql)) {
-
-            // Percorre todas as linhas da tabela
             while (rs.next()) {
+                Livro l = new Livro();
+                l.setId(rs.getInt("id"));
+                l.setIsbn(rs.getString("isbn"));
+                l.setTitulo(rs.getString("titulo"));
+                l.setAutor(rs.getString("autor"));
+                l.setCdd(rs.getString("cdd"));
+                l.setCdu(rs.getString("cdu"));
+                l.setDisponivel(rs.getInt("disponivel") == 1);
 
-                // Cria um objeto Livro com os dados da linha atual
-                Livro l = new Livro(
-                    rs.getInt("id"),
-                    rs.getString("titulo"),
-                    rs.getString("autor"),
-                    rs.getInt("disponivel") == 1 // converte 1/0 para boolean
-                );
-
-                livros.add(l); // adiciona à lista
+                livros.add(l);
             }
 
-        } catch (Exception e) {
-            System.err.println("Erro ao buscar livros: " + e.getMessage());
+        } catch (SQLException e) {
+            System.err.println("Erro ao listar livros: " + e.getMessage());
         }
 
-        return livros; // retorna lista preenchida (ou vazia)
+        return livros;
     }
 
-
-    // =============================================================
-    // MÉTODO: buscarPorId
-    // Retorna um livro específico pelo ID
-    // =============================================================
     public Livro buscarPorId(int id) {
+        String sql = "SELECT id, isbn, titulo, autor, cdd, cdu, disponivel FROM livro WHERE id = ?";
+        try (Connection conn = Conexao.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
 
-        String sql = "SELECT id, titulo, autor, disponivel FROM livro WHERE id = ?";
+            stmt.setInt(1, id);
 
-        Connection conn = Conexao.getConnection();
-
-        // PreparedStatement com parâmetro
-        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
-
-            stmt.setInt(1, id); // substitui o ? pelo ID informado
-
-            // executa consulta
             try (ResultSet rs = stmt.executeQuery()) {
-                if (rs.next()) { // se achou o livro
-                    return new Livro(
-                        rs.getInt("id"),
-                        rs.getString("titulo"),
-                        rs.getString("autor"),
-                        rs.getInt("disponivel") == 1
-                    );
+                if (rs.next()) {
+                    Livro l = new Livro();
+                    l.setId(rs.getInt("id"));
+                    l.setIsbn(rs.getString("isbn"));
+                    l.setTitulo(rs.getString("titulo"));
+                    l.setAutor(rs.getString("autor"));
+                    l.setCdd(rs.getString("cdd"));
+                    l.setCdu(rs.getString("cdu"));
+                    l.setDisponivel(rs.getInt("disponivel") == 1);
+                    return l;
                 }
             }
 
-        } catch (Exception e) {
+        } catch (SQLException e) {
             System.err.println("Erro ao buscar livro por ID: " + e.getMessage());
         }
-
-        return null; // se não encontrou, retorna null
+        return null;
     }
 
+    public List<Livro> buscarPorAutor(String autor) {
+        List<Livro> livros = new ArrayList<>();
+        String sql = "SELECT id, isbn, titulo, autor, cdd, cdu, disponivel FROM livro WHERE autor LIKE ? ORDER BY titulo";
 
-    // =============================================================
-    // MÉTODO: atualizarDisponibilidade
-    // Atualiza a coluna 'disponivel' de um livro (usado em empréstimos)
-    // =============================================================
-    public boolean atualizarDisponibilidade(int idLivro, boolean disponivel) {
+        try (Connection conn = Conexao.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
 
-        String sql = "UPDATE livro SET disponivel = ? WHERE id = ?";
+            stmt.setString(1, "%" + autor + "%");
 
-        Connection conn = Conexao.getConnection();
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    Livro l = new Livro();
+                    l.setId(rs.getInt("id"));
+                    l.setIsbn(rs.getString("isbn"));
+                    l.setTitulo(rs.getString("titulo"));
+                    l.setAutor(rs.getString("autor"));
+                    l.setCdd(rs.getString("cdd"));
+                    l.setCdu(rs.getString("cdu"));
+                    l.setDisponivel(rs.getInt("disponivel") == 1);
+                    livros.add(l);
+                }
+            }
 
-        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
-
-            stmt.setInt(1, disponivel ? 1 : 0); // define novo status
-            stmt.setInt(2, idLivro); // especifica qual livro atualizar
-
-            return stmt.executeUpdate() > 0; // true se atualização afetou 1+ linhas
-
-        } catch (Exception e) {
-            System.err.println("Erro ao atualizar disponibilidade: " + e.getMessage());
-            return false;
+        } catch (SQLException e) {
+            System.err.println("Erro ao buscar livros por autor: " + e.getMessage());
         }
+
+        return livros;
+    }
+
+    public boolean atualizar(Livro livro) {
+        String sql = "UPDATE livro SET isbn = ?, titulo = ?, autor = ?, cdd = ?, cdu = ?, disponivel = ? WHERE id = ?";
+        try (Connection conn = Conexao.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setString(1, livro.getIsbn());
+            stmt.setString(2, livro.getTitulo());
+            stmt.setString(3, livro.getAutor());
+            stmt.setString(4, livro.getCdd());
+            stmt.setString(5, livro.getCdu());
+            stmt.setInt(6, livro.isDisponivel() ? 1 : 0);
+            stmt.setInt(7, livro.getId());
+
+            int affected = stmt.executeUpdate();
+            return affected > 0;
+
+        } catch (SQLException e) {
+            System.err.println("Erro ao atualizar livro: " + e.getMessage());
+        }
+        return false;
+    }
+
+    public boolean deletar(int id) {
+        String sql = "DELETE FROM livro WHERE id = ?";
+        try (Connection conn = Conexao.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setInt(1, id);
+            int affected = stmt.executeUpdate();
+            return affected > 0;
+
+        } catch (SQLException e) {
+            System.err.println("Erro ao deletar livro: " + e.getMessage());
+        }
+        return false;
+    }
+
+    public boolean atualizarDisponibilidade(int idLivro, boolean disponivel) {
+        String sql = "UPDATE livro SET disponivel = ? WHERE id = ?";
+        try (Connection conn = Conexao.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setInt(1, disponivel ? 1 : 0);
+            stmt.setInt(2, idLivro);
+
+            int affected = stmt.executeUpdate();
+            return affected > 0;
+
+        } catch (SQLException e) {
+            System.err.println("Erro ao atualizar disponibilidade do livro: " + e.getMessage());
+        }
+        return false;
     }
 }

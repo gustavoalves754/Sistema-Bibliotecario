@@ -1,39 +1,43 @@
--- =============================================================
--- TABELA: LIVRO
--- Armazena todos os livros cadastrados no sistema
--- =============================================================
-CREATE TABLE IF NOT EXISTS livro (  -- Cria a tabela somente se ela ainda não existir
-    id INTEGER PRIMARY KEY AUTOINCREMENT,  -- ID único do livro, gerado automaticamente
-    titulo TEXT NOT NULL,                 -- Título do livro (obrigatório)
-    autor TEXT NOT NULL,                  -- Autor do livro (obrigatório)
-    disponivel INTEGER DEFAULT 1          -- 1 = disponível, 0 = emprestado
+-- schema.sql
+-- Esquema do banco de dados SQLite para o sistema bibliotecário
+
+-- Tabela de livros
+CREATE TABLE IF NOT EXISTS livro (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    isbn TEXT NOT NULL UNIQUE,      -- Identificador único do livro
+    titulo TEXT NOT NULL,
+    autor TEXT NOT NULL,
+    cdd TEXT,                       -- Classificação Decimal de Dewey (opcional)
+    cdu TEXT,                       -- Classificação Decimal Universal (opcional)
+    disponivel INTEGER DEFAULT 1    -- 1 = Disponível, 0 = Emprestado
 );
 
-
--- =============================================================
--- TABELA: USUARIO
--- Armazena todas as pessoas que podem pegar livros emprestados
--- =============================================================
-CREATE TABLE IF NOT EXISTS usuario (   -- Cria a tabela somente se não existir
-    id INTEGER PRIMARY KEY AUTOINCREMENT,  -- ID único do usuário, automático
-    nome TEXT NOT NULL,                    -- Nome do usuário (obrigatório)
-    email TEXT                             -- E-mail do usuário (pode ser nulo)
+-- Tabela de usuários
+CREATE TABLE IF NOT EXISTS usuario (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    nome TEXT NOT NULL,
+    email TEXT
 );
 
+-- Tabela de empréstimos
+CREATE TABLE IF NOT EXISTS emprestimo (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id_livro INTEGER NOT NULL,
+    id_usuario INTEGER NOT NULL,
 
--- =============================================================
--- TABELA: EMPRESTIMO
--- Liga um LIVRO a um USUARIO com datas de controle
--- =============================================================
-CREATE TABLE IF NOT EXISTS emprestimo (   -- Cria a tabela se não existir
-    id INTEGER PRIMARY KEY AUTOINCREMENT,  -- ID único do empréstimo
+    -- Dados explícitos para facilitar consulta
+    titulo_livro TEXT NOT NULL,
+    nome_usuario TEXT NOT NULL,
 
-    id_livro INTEGER,                      -- ID do livro emprestado
-    id_usuario INTEGER,                    -- ID do usuário que pegou o livro
+    data_emprestimo TEXT NOT NULL,           -- formato sugerido: yyyy-MM-dd
+    data_devolucao_prevista TEXT NOT NULL,   -- formato sugerido: yyyy-MM-dd
+    data_devolucao_real TEXT,                -- preenchido na devolução (pode ser NULL enquanto ativo)
 
-    data_emprestimo TEXT,                  -- Data em que o empréstimo foi feito
-    data_devolucao_prevista TEXT,          -- Data limite para devolução
+    -- Multas
+    multa_atraso_dia REAL NOT NULL DEFAULT 2.50,   -- valor por dia de atraso
+    multa_dano REAL NOT NULL DEFAULT 100.00,       -- valor fixo por dano no livro
+    valor_multa_total REAL NOT NULL DEFAULT 0.0,   -- valor total calculado na devolução
 
-    FOREIGN KEY(id_livro) REFERENCES livro(id),     -- Garante que o id_livro existe na tabela livro
-    FOREIGN KEY(id_usuario) REFERENCES usuario(id)  -- Garante que o id_usuario existe na tabela usuario
+    FOREIGN KEY (id_livro) REFERENCES livro(id) ON DELETE CASCADE,
+    FOREIGN KEY (id_usuario) REFERENCES usuario(id) ON DELETE CASCADE
 );

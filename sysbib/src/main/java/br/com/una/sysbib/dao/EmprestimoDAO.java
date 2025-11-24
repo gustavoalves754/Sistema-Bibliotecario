@@ -1,117 +1,170 @@
-package br.com.una.sysbib.dao; // Pacote onde a classe está localizada
+package br.com.una.sysbib.dao;
 
-import br.com.una.sysbib.model.Emprestimo; // Importa o modelo Emprestimo
-import java.sql.Connection; // Representa a conexão com o banco
-import java.sql.PreparedStatement; // Usado para comandos SQL com parâmetros
-import java.sql.ResultSet; // Resultado de consultas SELECT
-import java.sql.Statement; // Usado para executar SQL simples
-import java.util.ArrayList; // Lista dinâmica
-import java.util.List; // Interface de lista
+import br.com.una.sysbib.model.Emprestimo;
 
-// Classe responsável por salvar, buscar e deletar empréstimos no banco
+import java.sql.*;
+import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
+import java.util.List;
+
 public class EmprestimoDAO {
 
-    // =============================================================
-    // MÉTODO: registrar
-    // Insere um novo empréstimo no banco
-    // =============================================================
-    public boolean registrar(Emprestimo emprestimo) {
+    private Emprestimo map(ResultSet rs) throws Exception {
+        Emprestimo e = new Emprestimo();
 
-        // SQL para inserir um empréstimo
-        String sql = "INSERT INTO emprestimo (id_livro, id_usuario, data_emprestimo, data_devolucao_prevista) VALUES (?, ?, ?, ?)";
+        e.setId(rs.getInt("id"));
+        e.setIdLivro(rs.getInt("id_livro"));
+        e.setIdUsuario(rs.getInt("id_usuario"));
+        e.setTituloLivro(rs.getString("titulo_livro"));
+        e.setNomeUsuario(rs.getString("nome_usuario"));
 
-        // Obtém a conexão (mantida aberta pelo projeto)
-        Connection conn = Conexao.getConnection();
+        e.setDataEmprestimo(LocalDate.parse(rs.getString("data_emprestimo")));
+        e.setDataDevolucaoPrevista(LocalDate.parse(rs.getString("data_devolucao_prevista")));
 
-        // try-with-resources garante fechamento automático do PreparedStatement
-        try (PreparedStatement stmt = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+        String real = rs.getString("data_devolucao_real");
+        if (real != null) e.setDataDevolucaoReal(LocalDate.parse(real));
 
-            // Preenche os parâmetros da query
-            stmt.setInt(1, emprestimo.getIdLivro()); // ID do livro
-            stmt.setInt(2, emprestimo.getIdUsuario()); // ID do usuário
-            stmt.setString(3, emprestimo.getDataEmprestimo()); // data do empréstimo
-            stmt.setString(4, emprestimo.getDataDevolucaoPrevista()); // devolução prevista
+        e.setMultaAtrasoDia(rs.getDouble("multa_atraso_dia"));
+        e.setMultaDano(rs.getDouble("multa_dano"));
+        e.setValorMultaTotal(rs.getDouble("valor_multa_total"));
 
-            // Executa a inserção e verifica quantas linhas foram afetadas
-            int affectedRows = stmt.executeUpdate();
-
-            // Se inseriu pelo menos uma linha, tenta recuperar o ID gerado
-            if (affectedRows > 0) {
-                try (ResultSet rs = stmt.getGeneratedKeys()) { // pega o ID gerado
-                    if (rs.next()) {
-                        emprestimo.setId(rs.getInt(1)); // define o ID no objeto
-                        return true; // inserção OK
-                    }
-                }
-            }
-
-        } catch (Exception e) {
-            System.err.println("Erro ao registrar empréstimo: " + e.getMessage());
-        }
-        return false; // Se chegou aqui, deu errado
+        return e;
     }
 
+    public boolean registrarEmprestimo(Emprestimo e) {
+        String sql = """
+                INSERT INTO emprestimo (
+                 id_livro, id_usuario, titulo_livro, nome_usuario,
+                 data_emprestimo, data_devolucao_prevista,
+                 multa_atraso_dia, multa_dano, valor_multa_total
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """;
 
-    // =============================================================
-    // MÉTODO: buscarTodos
-    // Retorna uma lista com todos os empréstimos registrados
-    // =============================================================
-    public List<Emprestimo> buscarTodos() {
-        List<Emprestimo> emprestimos = new ArrayList<>(); // Lista onde serão armazenados os empréstimos
+        try (Connection conn = Conexao.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
 
-        // SQL para buscar todos os empréstimos
-        String sql = "SELECT id, id_livro, id_usuario, data_emprestimo, data_devolucao_prevista FROM emprestimo";
+            stmt.setInt(1, e.getIdLivro());
+            stmt.setInt(2, e.getIdUsuario());
+            stmt.setString(3, e.getTituloLivro());
+            stmt.setString(4, e.getNomeUsuario());
+            stmt.setString(5, e.getDataEmprestimo().toString());
+            stmt.setString(6, e.getDataDevolucaoPrevista().toString());
+            stmt.setDouble(7, e.getMultaAtrasoDia());
+            stmt.setDouble(8, e.getMultaDano());
+            stmt.setDouble(9, e.getValorMultaTotal());
 
-        Connection conn = Conexao.getConnection(); // Obtém a conexão
-
-        // try-with-resources para Statement e ResultSet
-        try (Statement stmt = conn.createStatement();
-             ResultSet rs = stmt.executeQuery(sql)) {
-
-            // Percorre cada linha retornada pela consulta
-            while (rs.next()) {
-
-                // Cria um objeto Emprestimo preenchendo com dados da linha atual
-                Emprestimo e = new Emprestimo(
-                    rs.getInt("id"),
-                    rs.getInt("id_livro"),
-                    rs.getInt("id_usuario"),
-                    rs.getString("data_emprestimo"),
-                    rs.getString("data_devolucao_prevista")
-                );
-
-                emprestimos.add(e); // Adiciona na lista
+            if (stmt.executeUpdate() > 0) {
+                ResultSet rs = stmt.getGeneratedKeys();
+                if (rs.next()) e.setId(rs.getInt(1));
+                return true;
             }
 
-        } catch (Exception e) {
-            System.err.println("Erro ao buscar empréstimos: " + e.getMessage());
+        } catch (Exception ex) {
+            System.err.println("Erro ao registrar empréstimo: " + ex.getMessage());
         }
-        return emprestimos; // Retorna a lista (pode estar vazia)
+        return false;
     }
 
+    public Emprestimo buscarPorId(int id) {
+        String sql = "SELECT * FROM emprestimo WHERE id = ?";
 
-    // =============================================================
-    // MÉTODO: deletar
-    // Remove um empréstimo do banco (devolução do livro)
-    // =============================================================
-    public boolean deletar(int idEmprestimo) {
+        try (Connection conn = Conexao.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
 
-        // SQL para deletar um empréstimo
+            stmt.setInt(1, id);
+
+            ResultSet rs = stmt.executeQuery();
+            if (rs.next()) return map(rs);
+
+        } catch (Exception ex) {
+            System.err.println("Erro ao buscar empréstimo: " + ex.getMessage());
+        }
+        return null;
+    }
+
+    public List<Emprestimo> listarAtivos() {
+        List<Emprestimo> lista = new ArrayList<>();
+        String sql = "SELECT * FROM emprestimo WHERE data_devolucao_real IS NULL ORDER BY data_emprestimo";
+
+        try (Connection conn = Conexao.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql);
+             ResultSet rs = stmt.executeQuery()) {
+
+            while (rs.next()) lista.add(map(rs));
+
+        } catch (Exception ex) {
+            System.err.println("Erro ao listar ativos: " + ex.getMessage());
+        }
+
+        return lista;
+    }
+
+    public List<Emprestimo> listarTodos() {
+        List<Emprestimo> lista = new ArrayList<>();
+        String sql = "SELECT * FROM emprestimo ORDER BY id DESC";
+
+        try (Connection conn = Conexao.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql);
+             ResultSet rs = stmt.executeQuery()) {
+
+            while (rs.next()) lista.add(map(rs));
+
+        } catch (Exception ex) {
+            System.err.println("Erro ao listar empréstimos: " + ex.getMessage());
+        }
+
+        return lista;
+    }
+
+    public boolean deletar(int id) {
         String sql = "DELETE FROM emprestimo WHERE id = ?";
 
-        Connection conn = Conexao.getConnection(); // Obtém a conexão
+        try (Connection conn = Conexao.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
 
-        // PreparedStatement com try-with-resources
-        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
-
-            stmt.setInt(1, idEmprestimo); // Define qual empréstimo apagar
-
-            // Se deletou pelo menos 1 linha, retorno será true
+            stmt.setInt(1, id);
             return stmt.executeUpdate() > 0;
 
-        } catch (Exception e) {
-            System.err.println("Erro ao deletar empréstimo: " + e.getMessage());
-            return false; // Deu erro
+        } catch (Exception ex) {
+            System.err.println("Erro ao deletar empréstimo: " + ex.getMessage());
         }
+
+        return false;
+    }
+
+    public boolean finalizarEmprestimo(int id, LocalDate dataReal, boolean dano) {
+        Emprestimo e = buscarPorId(id);
+        if (e == null) return false;
+
+        long diasAtraso = 0;
+
+        if (dataReal.isAfter(e.getDataDevolucaoPrevista())) {
+            diasAtraso = ChronoUnit.DAYS.between(
+                    e.getDataDevolucaoPrevista(), dataReal
+            );
+        }
+
+        double multa = diasAtraso * e.getMultaAtrasoDia();
+        if (dano) multa += e.getMultaDano();
+
+        e.setValorMultaTotal(multa);
+
+        String sql = "UPDATE emprestimo SET data_devolucao_real = ?, valor_multa_total = ? WHERE id = ?";
+
+        try (Connection conn = Conexao.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setString(1, dataReal.toString());
+            stmt.setDouble(2, multa);
+            stmt.setInt(3, id);
+
+            return stmt.executeUpdate() > 0;
+
+        } catch (Exception ex) {
+            System.err.println("Erro ao finalizar empréstimo: " + ex.getMessage());
+        }
+
+        return false;
     }
 }
