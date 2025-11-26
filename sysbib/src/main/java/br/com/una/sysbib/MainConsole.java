@@ -234,9 +234,16 @@ private static void cadastrarUsuario() { // método que cria um novo usuário
 
     System.out.print("Nome: "); // pede nome
     String nome = sc.nextLine(); // lê e armazena o nome digitado
-
+    
+    String email;
+    while(true){
     System.out.print("Email: "); // pede e-mail
-    String email = sc.nextLine(); // lê e salva o e-mail
+    email = sc.nextLine().trim(); // lê e salva o e-mail
+    if(!email.isBlank())break;
+    
+        System.out.println("O email é obrigatório, tente novamente");
+        
+    }
 
     Usuario u = new Usuario(nome, email); // cria objeto Usuario com essas informações
 
@@ -290,11 +297,24 @@ private static void deletarUsuario() { // método para deletar um usuário
     System.out.println("\n--- Deletar Usuário ---"); // título
 
     int id = lerInteiro("ID do usuário: "); // pede ID do usuário
+        
+    Usuario u = usuarioDAO.buscarPorId(id);
+        
+    System.out.println("Todos os dados abaixo serão excluídos:");
+    System.out.println("Nome: "+u.getNome());
+    System.out.println("Email: "+u.getEmail());
 
-    if (usuarioDAO.deletar(id)) // chama o DAO para remover do banco
-        System.out.println("Usuário deletado."); // sucesso
-    else
-        System.out.println("Erro ao deletar."); // falha
+    
+    System.out.print("Tem certeza que deseja excluir o perfil desse usuário?(s/n) ");
+    String OpcaoDeleta = sc.nextLine().trim().toLowerCase();
+    
+    if (OpcaoDeleta.equals("s"))
+        if (usuarioDAO.deletar(id)) // chama o DAO para remover do banco
+            System.out.println("Usuário deletado."); // sucesso
+        else
+            System.out.println("Erro ao deletar."); // falha
+   else
+        System.out.println("Processo cancelado");
 }
 
  // ============================================================
